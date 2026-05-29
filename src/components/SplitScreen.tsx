@@ -34,6 +34,7 @@ export default function SplitScreen({
   const unassignedUnits = units.filter((u) => !assign[u.id]);
   const groups = groupUnits(unassignedUnits);
   const unassignedTotal = round2(unassignedUnits.reduce((s, u) => s + u.unitPrice, 0));
+  const allAssigned = unassignedUnits.length === 0;
 
   const personTotals = (pid: string) => {
     const sub = round2(unitsByPerson(pid).reduce((s, u) => s + u.unitPrice, 0));
@@ -42,6 +43,7 @@ export default function SplitScreen({
   };
 
   const selectedUnit = units.find((u) => u.id === selected) ?? null;
+  const armed = !!selected;
 
   const tapUnit = (u: SplitUnit) => {
     if (assign[u.id]) {
@@ -70,9 +72,9 @@ export default function SplitScreen({
 
   return (
     <LayoutGroup>
-      <div className="flex flex-1 flex-col">
+      <div className="flex h-full flex-1 flex-col min-h-0">
         {/* Header */}
-        <div className="glass mb-3 rounded-3xl p-4">
+        <div className="glass shrink-0 rounded-3xl p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">
@@ -105,134 +107,171 @@ export default function SplitScreen({
           </div>
         </div>
 
-        {/* Selection hint */}
-        <div className="mb-3 h-8">
-          <AnimatePresence>
-            {selectedUnit && (
+        {/* Hint / actions row */}
+        <div className="my-3 flex h-8 shrink-0 items-center">
+          <AnimatePresence mode="wait" initial={false}>
+            {selectedUnit ? (
               <motion.div
+                key="hint"
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="flex h-8 items-center justify-center rounded-full bg-indigo-600 text-[13px] font-semibold text-white shadow-md shadow-indigo-500/30"
+                className="flex h-8 w-full items-center justify-center rounded-full bg-indigo-600 text-[13px] font-semibold text-white shadow-md shadow-indigo-500/30"
               >
-                Tap a person to assign {selectedUnit.emoji ?? "•"} {selectedUnit.name}
+                Tap a person below to assign {selectedUnit.emoji ?? "•"} {selectedUnit.name}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="actions"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex w-full items-center justify-between px-1"
+              >
+                <span className="text-[13px] text-slate-400">
+                  Tap an item, then a person
+                </span>
+                <button
+                  onClick={onRestart}
+                  className="rounded-full px-2 py-1 text-[13px] font-semibold text-slate-400 transition hover:text-slate-700"
+                >
+                  ↺ Start over
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto no-scrollbar pb-4 md:flex md:space-x-4 md:space-y-0">
-          {/* LEFT: items / unassigned */}
-          <section className="md:flex-1">
-            <SectionLabel>
-              Items {unassignedUnits.length > 0 && <Pill>{money(unassignedTotal)} left</Pill>}
-            </SectionLabel>
-            <div className="space-y-2.5">
-              {groups.map((g) => (
-                <div key={g.groupId} className="glass rounded-2xl p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{g.emoji ?? "🍽️"}</span>
-                    <InlineText
-                      value={g.name}
-                      onChange={(v) => editGroup(g.groupId, { name: v })}
-                      className="flex-1 text-[15px] font-semibold text-slate-800"
-                    />
-                    <span className="text-[13px] text-slate-400">@</span>
-                    <InlineNumber
-                      value={g.unitPrice}
-                      onChange={(v) => editGroup(g.groupId, { unitPrice: v })}
-                      className="text-[14px] font-semibold text-slate-700"
-                    />
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {g.units.map((u) => (
-                      <Chip
-                        key={u.id}
-                        unit={u}
-                        selected={selected === u.id}
-                        onTap={() => tapUnit(u)}
+        {/* Items (scrolls) */}
+        <div className="flex-1 overflow-y-auto no-scrollbar min-h-0 pb-3">
+          {!allAssigned ? (
+            <>
+              <SectionLabel>
+                Items <Pill>{money(unassignedTotal)} left</Pill>
+              </SectionLabel>
+              <div className="space-y-2.5">
+                {groups.map((g) => (
+                  <div key={g.groupId} className="glass rounded-2xl p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{g.emoji ?? "🍽️"}</span>
+                      <InlineText
+                        value={g.name}
+                        onChange={(v) => editGroup(g.groupId, { name: v })}
+                        className="flex-1 text-[15px] font-semibold text-slate-800"
                       />
-                    ))}
+                      <span className="text-[13px] text-slate-400">@</span>
+                      <InlineNumber
+                        value={g.unitPrice}
+                        onChange={(v) => editGroup(g.groupId, { unitPrice: v })}
+                        className="text-[14px] font-semibold text-slate-700"
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {g.units.map((u) => (
+                        <Chip
+                          key={u.id}
+                          unit={u}
+                          selected={selected === u.id}
+                          onTap={() => tapUnit(u)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {groups.length === 0 && (
-                <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/50 py-6 text-center text-[14px] font-semibold text-emerald-600">
-                  🎉 Everything assigned!
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* RIGHT: people */}
-          <section className="md:flex-1">
-            <SectionLabel>People</SectionLabel>
-            <div className="space-y-2.5">
-              {people.map((p, i) => {
-                const mine = unitsByPerson(p.id);
-                const tt = personTotals(p.id);
-                const armed = !!selected;
-                return (
-                  <motion.div
-                    layout
-                    key={p.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => tapPerson(p.id)}
-                    whileTap={armed ? { scale: 0.98 } : undefined}
-                    className={`glass block w-full cursor-pointer rounded-2xl p-3 text-left transition ${
-                      armed ? "ring-2 ring-indigo-400 ring-offset-2 ring-offset-transparent" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-100 to-fuchsia-100 text-lg">
-                        {AVATARS[i % AVATARS.length]}
-                      </div>
-                      <span className="flex-1 truncate text-[15px] font-bold text-slate-800">
-                        {p.name || `Person ${i + 1}`}
-                      </span>
-                      <span className="text-[16px] font-extrabold text-indigo-600">
-                        {money(tt.total)}
-                      </span>
-                    </div>
-
-                    <div className="mt-2 flex min-h-[28px] flex-wrap gap-1.5">
-                      <AnimatePresence mode="popLayout">
-                        {mine.map((u) => (
-                          <Chip key={u.id} unit={u} selected={false} onTap={() => tapUnit(u)} />
-                        ))}
-                      </AnimatePresence>
-                      {mine.length === 0 && (
-                        <span className="text-[12px] italic text-slate-400">
-                          {armed ? "Tap to drop item here" : "No items yet"}
-                        </span>
-                      )}
-                    </div>
-
-                    {mine.length > 0 && (
-                      <div className="mt-2 flex gap-3 border-t border-slate-200/70 pt-2 text-[12px] text-slate-500">
-                        <span>Sub {money(tt.sub)}</span>
-                        <span>Tax {money(tt.tax)}</span>
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-          </section>
+                ))}
+              </div>
+            </>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+              className="glass flex h-full flex-col items-center justify-center gap-2 rounded-3xl p-8 text-center"
+            >
+              <motion.div
+                initial={{ scale: 0.4, rotate: -20 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.05 }}
+                className="text-6xl"
+              >
+                🎉
+              </motion.div>
+              <p className="text-[22px] font-extrabold text-slate-900">All split!</p>
+              <p className="text-[14px] text-slate-500">
+                Everyone knows what they owe.
+              </p>
+              <p className="mt-1 rounded-full bg-indigo-50 px-4 py-1 text-[14px] font-bold text-indigo-600">
+                Total {money(total)}
+              </p>
+            </motion.div>
+          )}
         </div>
 
-        <button
-          onClick={onRestart}
-          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/60 py-3 text-[14px] font-semibold text-slate-500 transition hover:bg-white active:scale-[0.99]"
-        >
-          Start over
-        </button>
+        {/* People dock — always visible for assignment */}
+        <div className="-mx-5 shrink-0 border-t border-white/60 bg-white/40 px-5 pb-1 pt-3 backdrop-blur-md">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <span className="text-[12px] font-bold uppercase tracking-wider text-slate-400">
+              People
+            </span>
+            {armed && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[12px] font-semibold text-indigo-600"
+              >
+                Tap to assign ↓
+              </motion.span>
+            )}
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+            {people.map((p, i) => {
+              const mine = unitsByPerson(p.id);
+              const tt = personTotals(p.id);
+              return (
+                <motion.div
+                  layout
+                  key={p.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => tapPerson(p.id)}
+                  whileTap={armed ? { scale: 0.97 } : undefined}
+                  className={`glass w-[150px] shrink-0 cursor-pointer rounded-2xl p-2.5 transition ${
+                    armed ? "ring-2 ring-indigo-400" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-indigo-100 to-fuchsia-100 text-base">
+                      {AVATARS[i % AVATARS.length]}
+                    </div>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-slate-800">
+                      {p.name || `Person ${i + 1}`}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[18px] font-extrabold text-indigo-600">
+                    {money(tt.total)}
+                  </p>
+                  <div className="mt-1.5 flex min-h-[24px] flex-wrap gap-1">
+                    <AnimatePresence mode="popLayout">
+                      {mine.map((u) => (
+                        <DockChip key={u.id} unit={u} onTap={() => tapUnit(u)} />
+                      ))}
+                    </AnimatePresence>
+                    {mine.length === 0 && (
+                      <span className="text-[11px] italic text-slate-400">
+                        {armed ? "drop here" : "no items"}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </LayoutGroup>
   );
 }
 
+// Item-list chip (emoji + price)
 function Chip({
   unit,
   selected,
@@ -255,13 +294,33 @@ function Chip({
       exit={{ opacity: 0, scale: 0.6 }}
       transition={{ type: "spring", stiffness: 600, damping: 38 }}
       className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold shadow-sm transition ${
-        selected
-          ? "bg-indigo-600 text-white ring-2 ring-indigo-300"
-          : "bg-white text-slate-700"
+        selected ? "bg-indigo-600 text-white ring-2 ring-indigo-300" : "bg-white text-slate-700"
       }`}
     >
       <span>{unit.emoji ?? "•"}</span>
       <span>{money(unit.unitPrice)}</span>
+    </motion.button>
+  );
+}
+
+// Compact chip shown under a person in the dock (tap to unassign)
+function DockChip({ unit, onTap }: { unit: SplitUnit; onTap: () => void }) {
+  return (
+    <motion.button
+      layoutId={unit.id}
+      layout
+      onClick={(e) => {
+        e.stopPropagation();
+        onTap();
+      }}
+      title={`${unit.name} ${money(unit.unitPrice)} — tap to remove`}
+      initial={{ opacity: 0, scale: 0.6 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.6 }}
+      transition={{ type: "spring", stiffness: 600, damping: 38 }}
+      className="grid h-6 w-6 place-items-center rounded-full bg-white text-[13px] shadow-sm"
+    >
+      {unit.emoji ?? "•"}
     </motion.button>
   );
 }
