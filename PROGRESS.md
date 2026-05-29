@@ -40,7 +40,11 @@ Next.js (App Router) + TS, Tailwind, Framer Motion, Zod. Deploy: Vercel.
       skeleton in sample mode), spinner, cycling status messages. startProcessing holds min 2400ms.
       Verified REAL e2e via browser file upload (/tmp/receipt3.jpg): compress→OCR→DeepSeek→split, real data.
       `npm run build` passes clean. package.json name -> snapsplit.
-- [ ] 6. Deploy Vercel + phone camera test
+- [~] 6. Deploy Vercel + phone camera test
+      Git initialized, committed, pushed to GitHub: https://github.com/kovaacicc/snapsplit (PRIVATE).
+      .env is gitignored (NOT in repo). .env.example documents var names. README has deploy steps.
+      REMAINING (user, in Vercel dashboard): import repo at vercel.com/new, add env vars
+      `ocrspace` + `deepseekapi`, Deploy. Then open URL on phone to confirm camera over HTTPS.
 
 ## Totals logic
 - expand grouped qty into individual units {id,name,emoji,unitPrice}
